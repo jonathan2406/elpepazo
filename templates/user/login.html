@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Login</h1>
+<form method="POST">
+    <p>
+        <label for="dni">dni:</label><br>
+        <input type="text" name="dni" required>
+    </p>
+    <p><input type="submit" value="Login"></p>
+</form>
+{% endblock %}

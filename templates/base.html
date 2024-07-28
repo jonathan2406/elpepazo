@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Appointments</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <nav>
+        <ul>
+            {% if request.endpoint != 'index' %}
+                <li><a href="{{ url_for('index') }}">Home</a></li>
+            {% endif %}
+
+            {% if request.endpoint != 'manage_doctors' %}
+                <li><a href="{{ url_for('manage_doctors') }}">Manage Doctors</a></li>
+            {% endif %}
+
+            {% if request.endpoint != 'manage_patients' %}
+                <li><a href="{{ url_for('manage_patients') }}">Manage Patients</a></li>
+            {% endif %}
+
+            {% if request.endpoint != 'manage_appointments' %}
+                <li><a href="{{ url_for('manage_appointments') }}">Manage Appointments</a></li>
+            {% endif %}
+
+            {% if current_user.is_authenticated %}
+                <li><a href="{{ url_for('user_panel') }}">User Panel</a></li>
+                <li><a href="{{ url_for('map') }}">Check out closer IPS</a></li>
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            {% else %}
+                <li><a href="{{ url_for('login') }}">Login</a></li>
+            {% endif %}
+        </ul>
+    </nav>
+    <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="flashes">
+                    {% for category, message in messages %}
+                        <li class="{{ category }}">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

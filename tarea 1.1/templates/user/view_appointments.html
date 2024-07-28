@@ -1,9 +1,0 @@
-{% extends "base.html" %}
-{% block content %}
-<h1>Your Appointments</h1>
-<ul>
-    {% for appointment in appointments %}
-        <li>{{ appointment.date }} at {{ appointment.time }} with Dr. {{ appointment.doctor.name }} for {{ appointment.reason }}</li>
-    {% endfor %}
-</ul>
-{% endblock %}

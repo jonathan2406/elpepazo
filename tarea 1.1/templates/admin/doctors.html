@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Manage Doctors</h1>
+<form method="POST">
+    {{ form.hidden_tag() }}
+    <p>
+        {{ form.name.label }}<br>
+        {{ form.name(size=32) }}
+    </p>
+    <p>
+        {{ form.specialty.label }}<br>
+        {{ form.specialty(size=32) }}
+    </p>
+    <p><input type="submit" value="Add Doctor"></p>
+</form>
+<h2>Doctors List</h2>
+<ul>
+    {% for doctor in Doctors %}
+        <li>{{ doctor.name }} - {{ doctor.specialty }}</li>
+    {% endfor %}
+</ul>
+{% endblock %}

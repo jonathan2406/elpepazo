@@ -1,11 +1,17 @@
-{% extends "base.html" %}
+{% extends 'layouts/base.html' %}
+
+{% block title %}Login{% endblock %}
+
 {% block content %}
-<h1>Login</h1>
-<form method="POST">
-    <p>
-        <label for="dni">dni:</label><br>
-        <input type="text" name="dni" required>
-    </p>
-    <p><input type="submit" value="Login"></p>
-</form>
+    <h2>Login</h2>
+    <form action="{{ url_for('login') }}" method="post">
+        {{ form.hidden_tag() }}
+        <div>
+            {{ form.dni.label }} {{ form.dni }}
+        </div>
+        <div>
+            {{ form.password.label }} {{ form.password }}
+        </div>
+        <button type="submit">Login</button>
+    </form>
 {% endblock %}

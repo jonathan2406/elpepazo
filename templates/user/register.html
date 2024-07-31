@@ -1,0 +1,23 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %}Register{% endblock %}
+
+{% block content %}
+    <h2>Register</h2>
+    <form action="{{ url_for('register') }}" method="post">
+        {{ form.hidden_tag() }}
+        <div>
+            {{ form.name.label }} {{ form.name }}
+        </div>
+        <div>
+            {{ form.dni.label }} {{ form.dni }}
+        </div>
+        <div>
+            {{ form.email.label }} {{ form.email }}
+        </div>
+        <div>
+            {{ form.password.label }} {{ form.password }}
+        </div>
+        <button type="submit">Register</button>
+    </form>
+{% endblock %}

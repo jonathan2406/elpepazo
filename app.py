@@ -3,9 +3,23 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_login import LoginManager, login_user, logout_user, current_user, login_required
 from models import db, Doctor, Patient, Appointment
-from forms import DoctorForm, PatientForm, AppointmentForm
+from forms import DoctorForm, PatientForm, AppointmentForm, RegistrationForm, LoginForm, TwoFactorForm, AdminLoginForm
 from config import Config
 from notifications import Notifications
+from werkzeug.security import generate_password_hash, check_password_hash
+import pyotp
+
+import os
+import pyotp
+import qrcode
+from io import BytesIO
+from flask import send_file, render_template, redirect, url_for, request, flash
+from forms import RegistrationForm
+from models import Patient
+from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
+
+
 
 app = Flask(__name__)
 app.config.from_object(Config)
@@ -16,14 +30,6 @@ migrate = Migrate(app, db)
 login_manager = LoginManager()
 login_manager.init_app(app)
 
-@app.route('/map')
-def map():
-    return render_template('map.html')
-
-@app.route('/error')
-def error_page():
-    return render_template('error.html')
-
 @login_manager.user_loader
 def load_user(user_id):
     return Patient.query.get(int(user_id))
@@ -32,12 +38,20 @@ def load_user(user_id):
 def index():
     return render_template('index.html')
 
+@app.route('/map')
+def map():
+    return render_template('map.html')
+
+@app.route('/error')
+def error_page():
+    return render_template('error.html')
+
 @app.route('/admin/doctors', methods=['GET', 'POST'])
+@login_required
 def manage_doctors():
     form = DoctorForm()
     if form.validate_on_submit():
         doctor = Doctor(name=form.name.data, specialty=form.specialty.data, dni=form.dni.data)
-
         db.session.add(doctor)
         db.session.commit()
         flash('Doctor added successfully')
@@ -46,10 +60,12 @@ def manage_doctors():
     return render_template('admin/doctors.html', form=form, doctors=doctors)
 
 @app.route('/admin/patients', methods=['GET', 'POST'])
+@login_required
 def manage_patients():
     form = PatientForm()
     if form.validate_on_submit():
-        patient = Patient(name=form.name.data, dni=form.dni.data, email=form.email.data)
+        hashed_password = generate_password_hash(form.password.data, method='pbkdf2:sha256')
+        patient = Patient(name=form.name.data, dni=form.dni.data, email=form.email.data, password_hash=hashed_password)
         db.session.add(patient)
         db.session.commit()
         flash('Patient added successfully')
@@ -58,6 +74,7 @@ def manage_patients():
     return render_template('admin/patients.html', form=form, patients=patients)
 
 @app.route('/admin/appointments', methods=['GET', 'POST'])
+@login_required
 def manage_appointments():
     form = AppointmentForm()
     form.doctor_id.choices = [(doctor.dni, doctor.name) for doctor in Doctor.query.all()]
@@ -80,27 +97,70 @@ def manage_appointments():
             notify = Notifications()
             notify.send_email(patient.email, "New appointment scheduled successfully!", form.reason.data)
 
-
         return redirect(url_for('manage_appointments'))
     appointments = Appointment.query.all()
-
-    
-
     return render_template('admin/appointments.html', form=form, appointments=appointments)
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        # Verificar que el DNI del paciente no esté registrado
+        patient = Patient.query.filter_by(dni=form.dni.data).first()
+        if patient:
+            flash('DNI already registered')
+        else:
+            # Generar OTP y guardar el paciente
+            otp_secret = pyotp.random_base32()
+            hashed_password = generate_password_hash(form.password.data, method='pbkdf2:sha256')
+            new_patient = Patient(
+                name=form.name.data, 
+                dni=form.dni.data, 
+                email=form.email.data, 
+                password_hash=hashed_password,
+                otp_secret=otp_secret
+            )
+            db.session.add(new_patient)
+            db.session.commit()
+
+            # Generar el código QR
+            totp = pyotp.TOTP(otp_secret)
+            qr_uri = totp.provisioning_uri(name=form.email.data, issuer_name="YourAppName")
+            qr = qrcode.make(qr_uri)
+            qr_path = os.path.join('static', 'otp_qr.png')
+            qr.save(qr_path)
+
+            # Redirigir a la página para mostrar el QR
+            return render_template('user/qr_display.html', qr_path='otp_qr.png')
+
+    return render_template('user/register.html', form=form)
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if request.method == 'POST':
-        dni = request.form['dni']
-        patient = Patient.query.filter_by(dni=dni).first()
-        if patient:
+    form = LoginForm()
+    if form.validate_on_submit():
+        patient = Patient.query.filter_by(dni=form.dni.data).first()
+        if patient and check_password_hash(patient.password_hash, form.password.data):
             login_user(patient)
+            return redirect(url_for('two_factor'))
+        else:
+            flash('Invalid DNI or password')
+    return render_template('user/login.html', form=form)
+
+@app.route('/two_factor', methods=['GET', 'POST'])
+@login_required
+def two_factor():
+    form = TwoFactorForm()
+    if form.validate_on_submit():
+        if pyotp.TOTP(current_user.otp_secret).verify(form.otp.data):
             return redirect(url_for('user_panel'))
         else:
-            flash('Invalid dni')
-    return render_template('user/login.html')
+            flash('Invalid OTP')
+    return render_template('user/two_factor.html', form=form)
 
 @app.route('/logout')
+@login_required
 def logout():
     logout_user()
     return redirect(url_for('index'))
@@ -110,7 +170,6 @@ def logout():
 def user_panel():
     appointments = Appointment.query.filter_by(patient_id=current_user.dni).all()
     return render_template('user/panel.html', appointments=appointments)
-
 
 @app.route('/user/request_appointment', methods=['GET', 'POST'])
 @login_required
@@ -138,6 +197,4 @@ def view_appointments():
     return render_template('user/view_appointments.html', appointments=appointments)
 
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
     app.run(debug=True)

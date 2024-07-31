@@ -1,0 +1,12 @@
+{% extends "layouts/base.html" %}
+{% block content %}
+<h2>Two Factor Authentication</h2>
+<form method="POST" action="{{ url_for('two_factor') }}">
+    {{ form.hidden_tag() }}
+    <p>
+        {{ form.otp.label }}<br>
+        {{ form.otp(size=32) }}<br>
+    </p>
+    <p><input type="submit" value="Verify"></p>
+</form>
+{% endblock %}

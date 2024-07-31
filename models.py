@@ -1,35 +1,37 @@
+# models.py
 
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 
-
-db:SQLAlchemy = SQLAlchemy()
+db = SQLAlchemy()
 
 class Doctor(db.Model):
-    # Overwrite
-    def get_id(self):
-        return self.dni
-    
+    dni = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(150), nullable=False)
     specialty = db.Column(db.String(100), nullable=False)
-    dni = db.Column(db.Integer, nullable=False, primary_key=True)
 
 class Patient(db.Model, UserMixin):
-    # Overwrite
+    dni = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(150), nullable=False)
+    email = db.Column(db.String(150), unique=True, nullable=False)
+    password_hash = db.Column(db.String(150), nullable=False)
+    otp_secret = db.Column(db.String(16), nullable=False)
+
     def get_id(self):
         return self.dni
-    name = db.Column(db.String(150), nullable=False)
-    dni = db.Column(db.Integer, nullable=False, primary_key=True)
-    email = db.Column(db.String(150), nullable=False, unique=True)
+
+class Admin(db.Model, UserMixin):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(150), unique=True, nullable=False)
+    password_hash = db.Column(db.String(150), nullable=False)
+
+    def get_id(self):
+        return self.id
 
 class Appointment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.Date, nullable=False)
     time = db.Column(db.Time, nullable=False)
-    reason = db.Column(db.String(200), nullable=False)
+    reason = db.Column(db.Text, nullable=False)
     doctor_id = db.Column(db.Integer, db.ForeignKey('doctor.dni'), nullable=False)
     patient_id = db.Column(db.Integer, db.ForeignKey('patient.dni'), nullable=False)
-
-class Conditions(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    patient_id = db.Column(db.Integer, db.ForeignKey('patient.dni'))

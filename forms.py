@@ -28,13 +28,10 @@ class RegistrationForm(FlaskForm):
     email = StringField('email', validators=[DataRequired(), Email()])
     password = PasswordField('Password', validators=[DataRequired()])
 
+
 class LoginForm(FlaskForm):
     dni = StringField('DNI', validators=[DataRequired()])
     password = PasswordField('Password', validators=[DataRequired()])
 
 class TwoFactorForm(FlaskForm):
     otp = StringField('OTP', validators=[DataRequired()])
-
-class AdminLoginForm(FlaskForm):
-    username = StringField('Username', validators=[DataRequired()])
-    password = PasswordField('Password', validators=[DataRequired()])

@@ -19,15 +19,7 @@ class Patient(db.Model, UserMixin):
 
     def get_id(self):
         return self.dni
-
-class Admin(db.Model, UserMixin):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(150), unique=True, nullable=False)
-    password_hash = db.Column(db.String(150), nullable=False)
-
-    def get_id(self):
-        return self.id
-
+    
 class Appointment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     date = db.Column(db.Date, nullable=False)
@@ -35,3 +27,6 @@ class Appointment(db.Model):
     reason = db.Column(db.Text, nullable=False)
     doctor_id = db.Column(db.Integer, db.ForeignKey('doctor.dni'), nullable=False)
     patient_id = db.Column(db.Integer, db.ForeignKey('patient.dni'), nullable=False)
+
+    doctor = db.relationship('Doctor', backref='appointments')
+    patient = db.relationship('Patient', backref='appointments')

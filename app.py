@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 from flask_login import LoginManager, login_user, logout_user, current_user, login_required
 from models import db, Doctor, Patient, Appointment
-from forms import DoctorForm, PatientForm, AppointmentForm, RegistrationForm, LoginForm, TwoFactorForm, AdminLoginForm
+from forms import DoctorForm, PatientForm, AppointmentForm, RegistrationForm, LoginForm, TwoFactorForm
 from config import Config
 from notifications import Notifications
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -30,6 +30,9 @@ migrate = Migrate(app, db)
 login_manager = LoginManager()
 login_manager.init_app(app)
 
+with app.app_context():
+    db.create_all()
+
 @login_manager.user_loader
 def load_user(user_id):
     return Patient.query.get(int(user_id))
@@ -49,6 +52,8 @@ def error_page():
 @app.route('/admin/doctors', methods=['GET', 'POST'])
 @login_required
 def manage_doctors():
+    if not current_user.dni in [100,200,300]:
+        return redirect(url_for('index'))
     form = DoctorForm()
     if form.validate_on_submit():
         doctor = Doctor(name=form.name.data, specialty=form.specialty.data, dni=form.dni.data)
@@ -95,6 +100,12 @@ def manage_appointments():
         patient = Patient.query.get(form.patient_id.data)
         if patient:
             notify = Notifications()
+            notify.format_email(
+                date=form.date.data, 
+                time=form.time.data, 
+                reason=form.reason.data, 
+                doctor_id=form.doctor_id.data, 
+                patient_id=form.patient_id.data)
             notify.send_email(patient.email, "New appointment scheduled successfully!", form.reason.data)
 
         return redirect(url_for('manage_appointments'))
@@ -105,12 +116,14 @@ def manage_appointments():
 def register():
     form = RegistrationForm()
     if form.validate_on_submit():
-        # Verificar que el DNI del paciente no esté registrado
-        patient = Patient.query.filter_by(dni=form.dni.data).first()
-        if patient:
+        patientDni = Patient.query.filter_by(dni=form.dni.data).first()
+        patientEmail = Patient.query.filter_by(dni=form.email.data).first()
+        
+        if patientDni:
             flash('DNI already registered')
+        if patientEmail:
+            flash('Email already')
         else:
-            # Generar OTP y guardar el paciente
             otp_secret = pyotp.random_base32()
             hashed_password = generate_password_hash(form.password.data, method='pbkdf2:sha256')
             new_patient = Patient(
@@ -125,12 +138,14 @@ def register():
 
             # Generar el código QR
             totp = pyotp.TOTP(otp_secret)
-            qr_uri = totp.provisioning_uri(name=form.email.data, issuer_name="YourAppName")
+            qr_uri = totp.provisioning_uri(name=form.email.data, issuer_name="Reyah")
             qr = qrcode.make(qr_uri)
             qr_path = os.path.join('static', 'otp_qr.png')
             qr.save(qr_path)
 
             # Redirigir a la página para mostrar el QR
+
+            flash('register done!!!')
             return render_template('user/qr_display.html', qr_path='otp_qr.png')
 
     return render_template('user/register.html', form=form)
@@ -171,11 +186,13 @@ def user_panel():
     appointments = Appointment.query.filter_by(patient_id=current_user.dni).all()
     return render_template('user/panel.html', appointments=appointments)
 
-@app.route('/user/request_appointment', methods=['GET', 'POST'])
+# endpoint
+@app.route('/user/request_appointments', methods=['GET', 'POST'])
 @login_required
-def request_appointment():
+def request_appointments():
     form = AppointmentForm()
     form.doctor_id.choices = [(doctor.dni, doctor.name) for doctor in Doctor.query.all()]
+    form.patient_id.choices = [(current_user.dni, current_user.name)]
     if form.validate_on_submit():
         appointment = Appointment(
             date=form.date.data, 
@@ -187,13 +204,31 @@ def request_appointment():
         db.session.add(appointment)
         db.session.commit()
         flash('Appointment requested successfully')
-        return redirect(url_for('user_panel'))
-    return render_template('user/request_appointment.html', form=form)
 
+        # Notification block
+        patient = Patient.query.get(form.patient_id.data)
+        if patient:
+            notify = Notifications()
+            notify.format_email(
+                date=form.date.data, 
+                time=form.time.data, 
+                reason=form.reason.data, 
+                doctor=form.doctor_id.data, 
+                patient=form.patient_id.data)
+            notify.send_email(to_address=patient.email)
+
+        return redirect(url_for('user_panel'))
+
+
+    # template
+    return render_template('user/request_appointments.html', form=form)
+
+# endpoint
 @app.route('/user/view_appointments')
 @login_required
 def view_appointments():
     appointments = Appointment.query.filter_by(patient_id=current_user.dni).all()
+    # template
     return render_template('user/view_appointments.html', appointments=appointments)
 
 if __name__ == '__main__':

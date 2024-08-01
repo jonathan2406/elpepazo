@@ -6,8 +6,11 @@
     <title>QR Code</title>
 </head>
 <body>
+    <a href="{{ url_for('login') }}">Let's login!</a>
     <h1>Scan this QR Code with your authentication app:</h1>
     <img src="{{ url_for('static', filename='otp_qr.png') }}" alt="OTP QR Code">
     <p>Make sure to complete the setup in your authentication app.</p>
+
+
 </body>
 </html>

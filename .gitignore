@@ -7,3 +7,8 @@ __pycache__/**
 .venv
 .venv/**
 **/.venv
+
+**/new_venv/**
+new_venv
+new_venv/**
+**/new_venv
